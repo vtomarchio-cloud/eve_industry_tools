@@ -1,0 +1,606 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="dark">
+<title>EVE REPROCESSING CALCULATOR // Nebula Terminal</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=Orbitron:wght@600;700;900&family=Rajdhani:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #05080f;
+    --inset: #080c15;
+    --panel: rgba(10, 17, 28, 0.78);
+    --line: rgba(34, 211, 238, 0.30);
+    --line-soft: rgba(34, 211, 238, 0.12);
+    --accent: #22d3ee;
+    --accent-2: #818cf8;
+    --glow: rgba(34, 211, 238, 0.45);
+    --text: #e8f2f8;
+    --dim: #7f92a8;
+    --faint: #4d5d72;
+    --ok: #34d399;
+    --warn: #fbbf24;
+    --err: #f87171;
+    --roi-hot: #34d399;
+    --roi-good: #fbbf24;
+    --roi-warm: #fb923c;
+    --roi-bad: #f87171;
+    --display: 'Orbitron', 'Segoe UI', sans-serif;
+    --body: 'Rajdhani', 'Segoe UI', sans-serif;
+    --mono: 'JetBrains Mono', 'Consolas', monospace;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    min-height: 100vh;
+    padding: 42px 18px 56px;
+    font-family: var(--body);
+    font-size: 16px;
+    color: var(--text);
+    background:
+      radial-gradient(1100px 520px at 85% -10%, rgba(34, 211, 238, 0.08), transparent 60%),
+      radial-gradient(900px 520px at -10% 110%, rgba(49, 46, 129, 0.22), transparent 60%),
+      var(--bg);
+  }
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    background-image:
+      linear-gradient(var(--line-soft) 1px, transparent 1px),
+      linear-gradient(90deg, var(--line-soft) 1px, transparent 1px);
+    background-size: 44px 44px;
+    -webkit-mask-image: radial-gradient(ellipse 95% 85% at 50% 35%, black 25%, transparent 78%);
+    mask-image: radial-gradient(ellipse 95% 85% at 50% 35%, black 25%, transparent 78%);
+  }
+  body::after {
+    content: '';
+    position: fixed;
+    left: 0; right: 0; top: 0;
+    height: 20vh;
+    pointer-events: none;
+    background: linear-gradient(180deg, transparent, rgba(34, 211, 238, 0.05), transparent);
+    animation: scan 9s linear infinite;
+  }
+  @keyframes scan {
+    from { transform: translateY(-25vh); }
+    to   { transform: translateY(125vh); }
+  }
+  .console {
+    position: relative;
+    max-width: 920px;
+    margin: 0 auto;
+    display: grid;
+    gap: 20px;
+  }
+  .panel {
+    position: relative;
+    background: var(--panel);
+    border: 1px solid var(--line);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    padding: 22px 24px;
+  }
+  .panel::before,
+  .panel::after {
+    content: '';
+    position: absolute;
+    width: 20px;
+    height: 20px;
+    border: 2px solid var(--accent);
+  }
+  .panel::before { top: -2px; left: -2px; border-right: 0; border-bottom: 0; }
+  .panel::after  { bottom: -2px; right: -2px; border-left: 0; border-top: 0; }
+  .masthead { padding: 26px 28px 22px; }
+  .masthead::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, var(--accent), var(--accent-2) 45%, transparent 85%);
+  }
+  .kicker {
+    font-family: var(--display);
+    font-size: 0.6rem;
+    font-weight: 600;
+    letter-spacing: 0.42em;
+    text-transform: uppercase;
+    color: var(--faint);
+  }
+  .kicker b { color: var(--accent); font-weight: 700; }
+  h1 {
+    margin: 10px 0 8px;
+    font-family: var(--display);
+    font-size: clamp(1.45rem, 4.2vw, 2.1rem);
+    font-weight: 900;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    text-shadow: 0 0 26px var(--glow);
+  }
+  .tagline { margin: 0; color: var(--dim); font-size: 0.95rem; letter-spacing: 0.05em; }
+  .panel-label {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin: 0 0 16px;
+    font-family: var(--display);
+    font-size: 0.64rem;
+    font-weight: 700;
+    letter-spacing: 0.34em;
+    text-transform: uppercase;
+    color: var(--accent);
+  }
+  .panel-label::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: linear-gradient(90deg, var(--line), transparent);
+  }
+  .panel-label .hint {
+    font-family: var(--body);
+    font-weight: 500;
+    letter-spacing: 0.14em;
+    color: var(--faint);
+    font-size: 0.66rem;
+  }
+  .controls { display: flex; flex-wrap: wrap; gap: 18px; align-items: flex-end; }
+  .controls .field { flex: 1 1 180px; }
+  .field { display: grid; gap: 7px; }
+  .field > label {
+    font-size: 0.68rem;
+    font-weight: 700;
+    letter-spacing: 0.26em;
+    text-transform: uppercase;
+    color: var(--dim);
+  }
+  select, input[type='number'] {
+    appearance: none;
+    -webkit-appearance: none;
+    width: 100%;
+    background: var(--inset);
+    border: 1px solid var(--line);
+    color: var(--text);
+    font-family: var(--mono);
+    font-size: 0.85rem;
+    padding: 10px 12px;
+    outline: none;
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  }
+  select {
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'><path d='M1 1l4 4 4-4' fill='none' stroke='%237f92a8' stroke-width='1.5'/></svg>");
+    background-repeat: no-repeat;
+    background-position: right 12px center;
+    padding-right: 34px;
+    cursor: pointer;
+  }
+  select:focus, input[type='number']:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 1px var(--line-soft), 0 0 16px rgba(34, 211, 238, 0.22);
+  }
+  .btn {
+    appearance: none;
+    font-family: var(--display);
+    font-size: 0.7rem;
+    font-weight: 700;
+    letter-spacing: 0.24em;
+    text-transform: uppercase;
+    color: var(--accent);
+    background: rgba(34, 211, 238, 0.07);
+    border: 1px solid var(--line);
+    padding: 12px 22px;
+    cursor: pointer;
+    clip-path: polygon(10px 0, 100% 0, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0 100%, 0 10px);
+    transition: background 0.15s ease, color 0.15s ease, transform 0.05s ease, filter 0.15s ease;
+  }
+  .btn:hover:not(:disabled) {
+    background: rgba(34, 211, 238, 0.16);
+    color: #fff;
+    filter: drop-shadow(0 0 12px var(--glow));
+  }
+  .btn:active:not(:disabled) { transform: translateY(1px); }
+  .btn:disabled { opacity: 0.35; cursor: not-allowed; }
+  .btn-primary {
+    flex: 1 1 260px;
+    width: auto;
+    font-size: 0.9rem;
+    padding: 17px;
+    letter-spacing: 0.3em;
+    color: #04121a;
+    background: linear-gradient(135deg, var(--accent), #0e7490);
+    border-color: transparent;
+    filter: drop-shadow(0 0 14px var(--glow));
+  }
+  .btn-primary:hover:not(:disabled) {
+    background: linear-gradient(135deg, #67e8f9, #0891b2);
+    color: #04121a;
+    filter: drop-shadow(0 0 22px var(--glow));
+  }
+  .actions { display: flex; flex-wrap: wrap; gap: 16px; align-items: center; }
+  .data-input {
+    min-height: 150px;
+    background: var(--inset);
+    border: 1px solid var(--line);
+    padding: 14px 16px;
+    font-family: var(--mono);
+    font-size: 0.85rem;
+    line-height: 1.7;
+    white-space: pre-wrap;
+    word-break: break-word;
+    outline: none;
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  }
+  .data-input:focus { border-color: var(--accent); box-shadow: 0 0 16px rgba(34, 211, 238, 0.2); }
+  .data-input::selection, .data-input *::selection { background: rgba(34, 211, 238, 0.28); }
+  .tag {
+    font-family: var(--mono);
+    font-size: 0.72rem;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    padding: 1px 7px;
+    margin-right: 8px;
+    border: 1px solid currentColor;
+    white-space: nowrap;
+  }
+  .roi-hot  { color: var(--roi-hot); }
+  .roi-good { color: var(--roi-good); }
+  .roi-warm { color: var(--roi-warm); }
+  .roi-bad  { color: var(--roi-bad); }
+  .roi-na   { color: var(--faint); }
+  .status {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-top: 14px;
+    font-size: 0.82rem;
+    letter-spacing: 0.06em;
+    color: var(--dim);
+  }
+  .led { flex: none; width: 8px; height: 8px; border-radius: 50%; background: #3a4152; }
+  .led.on   { background: var(--ok);   box-shadow: 0 0 10px var(--ok);   animation: pulse 1.6s ease-in-out infinite; }
+  .led.busy { background: var(--warn); box-shadow: 0 0 10px var(--warn); animation: pulse 0.9s ease-in-out infinite; }
+  .led.err  { background: var(--err);  box-shadow: 0 0 10px var(--err); }
+  @keyframes pulse { 50% { opacity: 0.4; } }
+  .output {
+    margin: 0;
+    background: #05080d;
+    border: 1px solid var(--line-soft);
+    border-left: 3px solid var(--accent);
+    padding: 16px 18px;
+    font-family: var(--mono);
+    font-size: 0.8rem;
+    line-height: 1.75;
+    min-height: 200px;
+    max-height: 480px;
+    overflow: auto;
+    white-space: pre-wrap;
+    word-break: break-word;
+    color: #c3dbe8;
+  }
+  .footnote { margin: 4px 0 0; text-align: center; font-size: 0.72rem; letter-spacing: 0.14em; color: var(--faint); }
+  ::-webkit-scrollbar { width: 10px; height: 10px; }
+  ::-webkit-scrollbar-track { background: var(--inset); }
+  ::-webkit-scrollbar-thumb { background: #22334a; border: 2px solid var(--inset); }
+  ::-webkit-scrollbar-thumb:hover { background: var(--accent); }
+</style>
+</head>
+<body>
+<main class="console">
+  <header class="masthead panel">
+    <div class="kicker">EVE ONLINE <b>//</b> REPROCESSING BAY</div>
+    <h1>Reprocessing Calculator</h1>
+    <p class="tagline">Material value vs. buy orders &mdash; find the margin in your scrap</p>
+  </header>
+
+  <section class="panel">
+    <h2 class="panel-label">SDE Initialization</h2>
+    <button id="loadBtn" class="btn" type="button">Download invTypes + invTypeMaterials</button>
+    <div class="status"><span class="led" id="loadLed"></span><span id="loadStatus">Awaiting SDE download...</span></div>
+  </section>
+
+  <section class="panel">
+    <h2 class="panel-label">Item Queue <span class="hint">trailing quantities are ignored</span></h2>
+    <div id="itemInput" class="data-input" contenteditable="true" spellcheck="false">150mm Light AutoCannon I 5
+Scourge Fury Heavy Missile 100
+Paladin</div>
+  </section>
+
+  <section class="panel">
+    <h2 class="panel-label">Parameters</h2>
+    <div class="controls">
+      <div class="field">
+        <label for="buyLoc">Buy Item At</label>
+        <select id="buyLoc">
+          <option value="jita" selected>Jita</option>
+          <option value="amarr">Amarr</option>
+          <option value="dodixie">Dodixie</option>
+          <option value="rens">Rens</option>
+          <option value="hek">Hek</option>
+          <option value="misaba">Misaba</option>
+        </select>
+      </div>
+      <div class="field">
+        <label for="sellLoc">Sell Mats At</label>
+        <select id="sellLoc">
+          <option value="jita" selected>Jita</option>
+          <option value="amarr">Amarr</option>
+          <option value="dodixie">Dodixie</option>
+          <option value="rens">Rens</option>
+          <option value="hek">Hek</option>
+          <option value="misaba">Misaba</option>
+        </select>
+      </div>
+      <div class="field" style="flex: 0 1 150px;">
+        <label for="yieldInput">Yield %</label>
+        <input type="number" id="yieldInput" value="55" step="0.1" min="0" max="100">
+      </div>
+    </div>
+  </section>
+
+  <section class="panel">
+    <div class="actions">
+      <button id="runBtn" class="btn btn-primary" type="button" disabled>Process Items</button>
+      <button id="clearBtn" class="btn" type="button">Clear</button>
+      <div class="status" style="margin-top: 0; flex: 1 1 220px;">
+        <span class="led" id="runLed"></span><span id="runStatus">Load SDE data to enable processing.</span>
+      </div>
+    </div>
+  </section>
+
+  <section class="panel">
+    <h2 class="panel-label">Profitability Report</h2>
+    <pre id="output" class="output">Output will appear here...</pre>
+  </section>
+
+  <p class="footnote">DATA: FUZZWORK SDE + ESI TRANQUILITY &middot; PRICES IN ISK</p>
+  <p class="footnote">VERSION 1.0 &middot; 2026-10-12 &middot; VULNUS MORTALIS</p>
+</main>
+<script>
+"use strict";
+const SDE_TYPES_URL = 'https://www.fuzzwork.co.uk/dump/latest/csv/invTypes.csv';
+const SDE_MATERIALS_URL = 'https://www.fuzzwork.co.uk/dump/latest/csv/invTypeMaterials.csv';
+const ESI_ORDERS = 'https://esi.evetech.net/latest/markets';
+const PROXY = url => `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`;
+
+const LOCATIONS = Object.freeze({
+  jita:    { label: 'Jita',    system: 30000142, region: 10000002 },
+  amarr:   { label: 'Amarr',   system: 30002187, region: 10000043 },
+  dodixie: { label: 'Dodixie', system: 30002659, region: 10000032 },
+  rens:    { label: 'Rens',    system: 30002510, region: 10000030 },
+  hek:     { label: 'Hek',     system: 30002053, region: 10000042 },
+  misaba:  { label: 'Misaba',  system: 30003563, region: 10000043 },
+});
+
+const idToName = new Map();
+const nameToId = new Map();
+const typeMaterials = new Map(); // typeId -> [[qty, materialId], ...]
+
+const $ = id => document.getElementById(id);
+const fmt = new Intl.NumberFormat('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const escapeHtml = s => s.replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const nextFrame = () => new Promise(r => setTimeout(r, 40));
+const typeIdFor = name => nameToId.get(name) ?? nameToId.get(name.toLowerCase());
+const row = (label, value) => `${label.padEnd(30)}${value}`;
+const RULE = '═'.repeat(76);
+const HR = '─'.repeat(76);
+
+const DEFAULT_QUEUE = '150mm Light AutoCannon I 5\nScourge Fury Heavy Missile 100\nPaladin';
+
+function parseCSV(text) {
+  const rows = [];
+  let row = [];
+  let cell = '';
+  let quoted = false;
+  for (let i = 0; i < text.length; i++) {
+    const ch = text[i];
+    if (quoted) {
+      if (ch === '"') {
+        if (text[i + 1] === '"') { cell += '"'; i++; }
+        else quoted = false;
+      } else {
+        cell += ch;
+      }
+    } else if (ch === '"') {
+      quoted = true;
+    } else if (ch === ',') {
+      row.push(cell.trim());
+      cell = '';
+    } else if (ch === '\n') {
+      row.push(cell.trim());
+      if (row.some(v => v !== '')) rows.push(row);
+      row = [];
+      cell = '';
+    } else if (ch !== '\r') {
+      cell += ch;
+    }
+  }
+  row.push(cell.trim());
+  if (row.some(v => v !== '')) rows.push(row);
+  return rows;
+}
+
+async function fetchText(url) {
+  try {
+    const res = await fetch(url);
+    if (res.ok) return res.text();
+  } catch { /* direct fetch blocked (CORS/network) — fall back to proxy */ }
+  const res = await fetch(PROXY(url));
+  if (!res.ok) throw new Error(`download failed (HTTP ${res.status})`);
+  return res.text();
+}
+
+function applyInvTypes(text) {
+  const rows = parseCSV(text);
+  if (rows[0]?.[0] === 'typeID') rows.shift();
+  for (const r of rows) {
+    const tid = Number(r[0]);
+    const name = r[2];
+    if (Number.isInteger(tid) && name) {
+      idToName.set(tid, name);
+      nameToId.set(name, tid);
+      nameToId.set(name.toLowerCase(), tid);
+    }
+  }
+}
+
+function applyInvTypeMaterials(text) {
+  const rows = parseCSV(text);
+  if (rows[0]?.[0] === 'typeID') rows.shift();
+  for (const r of rows) {
+    const typeId = Number(r[0]);
+    const materialId = Number(r[1]);
+    const qty = Number(r[2]);
+    if (!Number.isInteger(typeId) || !Number.isInteger(materialId) || !Number.isFinite(qty)) continue;
+    if (!typeMaterials.has(typeId)) typeMaterials.set(typeId, []);
+    typeMaterials.get(typeId).push([qty, materialId]);
+  }
+}
+
+async function bestOrderPrice(typeId, loc, kind) {
+  try {
+    const res = await fetch(`${ESI_ORDERS}/${loc.region}/orders/?datasource=tranquility&order_type=${kind}&type_id=${typeId}`);
+    if (res.ok) {
+      const inSystem = (await res.json()).filter(o => o.system_id === loc.system);
+      if (inSystem.length) {
+        return inSystem.reduce(
+          (best, o) => (kind === 'sell' ? Math.min(best, o.price) : Math.max(best, o.price)),
+          kind === 'sell' ? Infinity : -Infinity
+        );
+      }
+    }
+  } catch { /* ESI hiccup — treat as no orders */ }
+  return null;
+}
+
+function roiTier(roi) {
+  if (roi === null) return { label: 'N/A', cls: 'roi-na', sort: -Infinity };
+  const label = `${roi.toFixed(2)}%`;
+  if (roi > 20) return { label, cls: 'roi-hot', sort: roi };
+  if (roi >= 10) return { label, cls: 'roi-good', sort: roi };
+  if (roi >= 0) return { label, cls: 'roi-warm', sort: roi };
+  return { label, cls: 'roi-bad', sort: roi };
+}
+
+const cleanItemLine = line => line
+  .replace(/\(ROI:.*?\)/gi, '')
+  .replace(/\s+[\d,.]+\s*$/, '')
+  .trim();
+
+function setLoadStatus(msg, state = '') {
+  $('loadStatus').textContent = msg;
+  $('loadLed').className = `led ${state}`;
+}
+
+$('loadBtn').addEventListener('click', async () => {
+  const btn = $('loadBtn');
+  btn.disabled = true;
+  try {
+    setLoadStatus('Downloading invTypes.csv — large file, please wait...', 'busy');
+    const typesText = await fetchText(SDE_TYPES_URL);
+    setLoadStatus('Parsing invTypes.csv...', 'busy');
+    await nextFrame();
+    applyInvTypes(typesText);
+    setLoadStatus('Downloading invTypeMaterials.csv...', 'busy');
+    const matsText = await fetchText(SDE_MATERIALS_URL);
+    setLoadStatus('Parsing invTypeMaterials.csv...', 'busy');
+    await nextFrame();
+    applyInvTypeMaterials(matsText);
+    setLoadStatus(`SDE online — ${idToName.size.toLocaleString('en-US')} items, ${typeMaterials.size.toLocaleString('en-US')} material maps.`, 'on');
+    $('runBtn').disabled = false;
+    $('runStatus').textContent = 'Ready to process items.';
+  } catch (err) {
+    setLoadStatus(`Download failed: ${err.message}`, 'err');
+  } finally {
+    btn.disabled = false;
+  }
+});
+
+$('runBtn').addEventListener('click', async () => {
+  const lines = $('itemInput').innerText.split('\n').map(l => l.trim()).filter(Boolean);
+  if (!lines.length) { $('runStatus').textContent = 'Input is empty.'; return; }
+
+  const rawYield = parseFloat($('yieldInput').value);
+  const yieldFrac = (Number.isFinite(rawYield) ? rawYield : 55) / 100;
+  const buyLoc = LOCATIONS[$('buyLoc').value];
+  const sellLoc = LOCATIONS[$('sellLoc').value];
+
+  const btn = $('runBtn');
+  const out = $('output');
+  btn.disabled = true;
+  $('runLed').className = 'led busy';
+  const report = [];
+  const items = [];
+
+  try {
+    for (let i = 0; i < lines.length; i++) {
+      const name = cleanItemLine(lines[i]);
+      $('runStatus').textContent = `Evaluating ${i + 1}/${lines.length} — ${name}`;
+      report.push(`ITEM: ${name}`, RULE);
+
+      const typeId = typeIdFor(name);
+      if (!typeId) {
+        report.push('  ▲ not found in SDE.', '');
+        items.push({ name, sort: -Infinity, tag: 'NOT FOUND', cls: 'roi-na' });
+        out.textContent = report.join('\n');
+        continue;
+      }
+
+      const mats = typeMaterials.get(typeId);
+      if (!mats || !mats.length) {
+        report.push('  ▲ no base materials — item cannot be reprocessed.', '');
+        items.push({ name, sort: -Infinity, tag: 'NO MATS', cls: 'roi-na' });
+        out.textContent = report.join('\n');
+        continue;
+      }
+
+      let matValue = 0;
+      for (const [qty, matId] of mats) {
+        const price = (await bestOrderPrice(matId, sellLoc, 'sell')) ?? 0;
+        matValue += qty * price;
+        report.push(`  ${qty.toLocaleString('en-US')}× ${idToName.get(matId) ?? `?${matId}`} @ ${fmt.format(price)} = ${fmt.format(qty * price)} ISK`);
+      }
+
+      const buyPrice = (await bestOrderPrice(typeId, buyLoc, 'buy')) ?? 0;
+      const value = matValue * yieldFrac;
+      const margin = value - buyPrice;
+      const roi = buyPrice > 0 ? (margin / buyPrice) * 100 : null;
+      const tier = roiTier(roi);
+
+      report.push(
+        HR,
+        row('Material value (100%)', `${fmt.format(matValue)} ISK`),
+        row(`Reprocessed (${(yieldFrac * 100).toFixed(1)}%)`, `${fmt.format(value)} ISK`),
+        row(`Buy order (${buyLoc.label})`, `${fmt.format(buyPrice)} ISK`),
+        HR,
+        row('Margin', `${margin >= 0 ? '+' : ''}${fmt.format(margin)} ISK`),
+        row('ROI', tier.label),
+        ''
+      );
+      items.push({ name, sort: tier.sort, tag: `ROI: ${tier.label}`, cls: tier.cls });
+      out.textContent = report.join('\n');
+    }
+
+    items.sort((a, b) => b.sort - a.sort);
+    $('itemInput').innerHTML = items.map(it =>
+      `<div><span class="tag ${it.cls}">(${it.tag})</span> ${escapeHtml(it.name)}</div>`
+    ).join('');
+    $('runStatus').textContent = 'Processing complete — queue re-sorted by ROI.';
+  } catch (err) {
+    $('runStatus').textContent = `Error: ${err.message}`;
+  } finally {
+    btn.disabled = false;
+    $('runLed').className = 'led';
+  }
+});
+
+$('clearBtn').addEventListener('click', () => {
+  $('output').textContent = 'Output cleared.';
+  $('itemInput').innerHTML = DEFAULT_QUEUE.split('\n').map(escapeHtml).join('<br>');
+  $('runStatus').textContent = 'Queue reset.';
+});
+</script>
+</body>
+</html>

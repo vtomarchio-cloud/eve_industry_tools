@@ -1,0 +1,900 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="dark">
+<title>EVE INDUSTRY CALCULATOR // Starforge</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=Orbitron:wght@600;700;900&family=Rajdhani:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0705;
+    --inset: #100c08;
+    --panel: rgba(22, 16, 10, 0.78);
+    --line: rgba(251, 191, 36, 0.30);
+    --line-soft: rgba(251, 191, 36, 0.12);
+    --accent: #fbbf24;
+    --accent-2: #fb923c;
+    --glow: rgba(251, 191, 36, 0.40);
+    --text: #f3ede2;
+    --dim: #a3947c;
+    --faint: #6b5f4d;
+    --ok: #34d399;
+    --warn: #fbbf24;
+    --err: #f87171;
+    --display: 'Orbitron', 'Segoe UI', sans-serif;
+    --body: 'Rajdhani', 'Segoe UI', sans-serif;
+    --mono: 'JetBrains Mono', 'Consolas', monospace;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    min-height: 100vh;
+    padding: 42px 18px 56px;
+    font-family: var(--body);
+    font-size: 16px;
+    color: var(--text);
+    background:
+      radial-gradient(1100px 520px at 85% -10%, rgba(251, 191, 36, 0.08), transparent 60%),
+      radial-gradient(900px 520px at -10% 110%, rgba(124, 45, 18, 0.20), transparent 60%),
+      var(--bg);
+  }
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    background-image:
+      linear-gradient(var(--line-soft) 1px, transparent 1px),
+      linear-gradient(90deg, var(--line-soft) 1px, transparent 1px);
+    background-size: 44px 44px;
+    -webkit-mask-image: radial-gradient(ellipse 95% 85% at 50% 35%, black 25%, transparent 78%);
+    mask-image: radial-gradient(ellipse 95% 85% at 50% 35%, black 25%, transparent 78%);
+  }
+  body::after {
+    content: '';
+    position: fixed;
+    left: 0; right: 0; top: 0;
+    height: 20vh;
+    pointer-events: none;
+    background: linear-gradient(180deg, transparent, rgba(251, 191, 36, 0.05), transparent);
+    animation: scan 9s linear infinite;
+  }
+  @keyframes scan {
+    from { transform: translateY(-25vh); }
+    to   { transform: translateY(125vh); }
+  }
+  .console {
+    position: relative;
+    max-width: 1020px;
+    margin: 0 auto;
+    display: grid;
+    gap: 20px;
+  }
+  .panel {
+    position: relative;
+    background: var(--panel);
+    border: 1px solid var(--line);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    padding: 22px 24px;
+  }
+  .panel::before,
+  .panel::after {
+    content: '';
+    position: absolute;
+    width: 20px;
+    height: 20px;
+    border: 2px solid var(--accent);
+  }
+  .panel::before { top: -2px; left: -2px; border-right: 0; border-bottom: 0; }
+  .panel::after  { bottom: -2px; right: -2px; border-left: 0; border-top: 0; }
+  .masthead { padding: 26px 28px 22px; }
+  .hazard {
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 6px;
+    background: repeating-linear-gradient(-45deg, var(--accent) 0 12px, transparent 12px 24px);
+    opacity: 0.35;
+  }
+  .kicker {
+    margin-top: 6px;
+    font-family: var(--display);
+    font-size: 0.6rem;
+    font-weight: 600;
+    letter-spacing: 0.42em;
+    text-transform: uppercase;
+    color: var(--faint);
+  }
+  .kicker b { color: var(--accent); font-weight: 700; }
+  h1 {
+    margin: 10px 0 8px;
+    font-family: var(--display);
+    font-size: clamp(1.5rem, 4.4vw, 2.2rem);
+    font-weight: 900;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    text-shadow: 0 0 26px var(--glow);
+  }
+  .tagline { margin: 0; color: var(--dim); font-size: 0.95rem; letter-spacing: 0.05em; }
+  .panel-label {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin: 0 0 16px;
+    font-family: var(--display);
+    font-size: 0.64rem;
+    font-weight: 700;
+    letter-spacing: 0.34em;
+    text-transform: uppercase;
+    color: var(--accent);
+  }
+  .panel-label::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: linear-gradient(90deg, var(--line), transparent);
+  }
+  .panel-label .hint {
+    font-family: var(--body);
+    font-weight: 500;
+    letter-spacing: 0.14em;
+    color: var(--faint);
+    font-size: 0.66rem;
+  }
+  .controls { display: flex; flex-wrap: wrap; gap: 18px; align-items: flex-end; }
+  .controls .field { flex: 1 1 180px; }
+  .field-sm { flex: 0 1 140px; }
+  .field-toggle { align-self: flex-end; padding-bottom: 10px; }
+  .field { display: grid; gap: 7px; }
+  .field > label {
+    font-size: 0.68rem;
+    font-weight: 700;
+    letter-spacing: 0.26em;
+    text-transform: uppercase;
+    color: var(--dim);
+  }
+  select, input[type='number'] {
+    appearance: none;
+    -webkit-appearance: none;
+    width: 100%;
+    background: var(--inset);
+    border: 1px solid var(--line);
+    color: var(--text);
+    font-family: var(--mono);
+    font-size: 0.85rem;
+    padding: 10px 12px;
+    outline: none;
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  }
+  select {
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'><path d='M1 1l4 4 4-4' fill='none' stroke='%23a3947c' stroke-width='1.5'/></svg>");
+    background-repeat: no-repeat;
+    background-position: right 12px center;
+    padding-right: 34px;
+    cursor: pointer;
+  }
+  select:focus, input[type='number']:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 1px var(--line-soft), 0 0 16px rgba(251, 191, 36, 0.22);
+  }
+  .btn {
+    appearance: none;
+    font-family: var(--display);
+    font-size: 0.7rem;
+    font-weight: 700;
+    letter-spacing: 0.24em;
+    text-transform: uppercase;
+    color: var(--accent);
+    background: rgba(251, 191, 36, 0.07);
+    border: 1px solid var(--line);
+    padding: 12px 22px;
+    cursor: pointer;
+    clip-path: polygon(10px 0, 100% 0, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0 100%, 0 10px);
+    transition: background 0.15s ease, color 0.15s ease, transform 0.05s ease, filter 0.15s ease;
+  }
+  .btn:hover:not(:disabled) {
+    background: rgba(251, 191, 36, 0.16);
+    color: #fff;
+    filter: drop-shadow(0 0 12px var(--glow));
+  }
+  .btn:active:not(:disabled) { transform: translateY(1px); }
+  .btn:disabled { opacity: 0.35; cursor: not-allowed; }
+  .btn-primary {
+    flex: 1 1 260px;
+    width: auto;
+    font-size: 0.9rem;
+    padding: 17px;
+    letter-spacing: 0.3em;
+    color: #1a1206;
+    background: linear-gradient(135deg, var(--accent), #b45309);
+    border-color: transparent;
+    filter: drop-shadow(0 0 14px var(--glow));
+  }
+  .btn-primary:hover:not(:disabled) {
+    background: linear-gradient(135deg, #fcd34d, #d97706);
+    color: #1a1206;
+    filter: drop-shadow(0 0 22px var(--glow));
+  }
+  .actions { display: flex; flex-wrap: wrap; gap: 16px; align-items: center; }
+  .data-area {
+    width: 100%;
+    min-height: 120px;
+    resize: vertical;
+    background: var(--inset);
+    border: 1px solid var(--line);
+    color: var(--text);
+    padding: 14px 16px;
+    font-family: var(--mono);
+    font-size: 0.85rem;
+    line-height: 1.7;
+    outline: none;
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  }
+  .data-area:focus { border-color: var(--accent); box-shadow: 0 0 16px rgba(251, 191, 36, 0.2); }
+  .data-area::selection { background: rgba(251, 191, 36, 0.28); }
+  .toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    cursor: pointer;
+    user-select: none;
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--dim);
+  }
+  .toggle input {
+    appearance: none;
+    -webkit-appearance: none;
+    flex: none;
+    width: 36px;
+    height: 18px;
+    background: var(--inset);
+    border: 1px solid var(--line);
+    position: relative;
+    cursor: pointer;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+  }
+  .toggle input::after {
+    content: '';
+    position: absolute;
+    top: 2px; left: 2px;
+    width: 12px; height: 12px;
+    background: #4a4234;
+    transition: left 0.2s ease, background 0.2s ease;
+  }
+  .toggle input:checked { border-color: var(--accent); box-shadow: 0 0 10px rgba(251, 191, 36, 0.3); }
+  .toggle input:checked::after { left: 20px; background: var(--accent); }
+  input[type='file'] {
+    width: 100%;
+    background: var(--inset);
+    border: 1px dashed var(--line);
+    color: var(--dim);
+    font-family: var(--mono);
+    font-size: 0.78rem;
+    padding: 9px 12px;
+    cursor: pointer;
+    transition: border-color 0.15s ease;
+  }
+  input[type='file']:hover { border-color: var(--accent); }
+  input[type='file']::file-selector-button {
+    font-family: var(--display);
+    font-size: 0.6rem;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--accent);
+    background: transparent;
+    border: 1px solid var(--line);
+    padding: 7px 12px;
+    margin-right: 12px;
+    cursor: pointer;
+  }
+  .progress {
+    height: 5px;
+    background: rgba(251, 191, 36, 0.1);
+    border: 1px solid var(--line-soft);
+    overflow: hidden;
+  }
+  .progress i {
+    display: block;
+    height: 100%;
+    width: 0%;
+    background: linear-gradient(90deg, var(--accent), var(--accent-2));
+    box-shadow: 0 0 12px var(--accent);
+    transition: width 0.25s ease;
+  }
+  .ranks {
+    max-height: 380px;
+    overflow: auto;
+    border: 1px solid var(--line-soft);
+    background: #0b0908;
+  }
+  table { width: 100%; border-collapse: collapse; font-family: var(--mono); font-size: 0.78rem; }
+  thead th {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    background: #171310;
+    color: var(--accent);
+    font-family: var(--display);
+    font-size: 0.58rem;
+    font-weight: 700;
+    letter-spacing: 0.24em;
+    text-transform: uppercase;
+    text-align: right;
+    padding: 11px 14px;
+    border-bottom: 1px solid var(--line);
+  }
+  tbody td {
+    text-align: right;
+    padding: 9px 14px;
+    border-bottom: 1px solid rgba(251, 191, 36, 0.08);
+    color: #d8d2c4;
+  }
+  thead th:nth-child(2), tbody td:nth-child(2) { text-align: left; }
+  tbody tr:hover td { background: rgba(251, 191, 36, 0.05); }
+  td.pos { color: var(--ok); }
+  td.neg { color: var(--err); }
+  td.empty {
+    text-align: center;
+    color: var(--faint);
+    padding: 18px;
+    font-family: var(--body);
+    letter-spacing: 0.1em;
+  }
+  td.empty.err { color: var(--err); }
+  .status {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-top: 14px;
+    font-size: 0.82rem;
+    letter-spacing: 0.06em;
+    color: var(--dim);
+  }
+  .led { flex: none; width: 8px; height: 8px; border-radius: 50%; background: #3a4152; }
+  .led.on   { background: var(--ok);   box-shadow: 0 0 10px var(--ok);   animation: pulse 1.6s ease-in-out infinite; }
+  .led.busy { background: var(--warn); box-shadow: 0 0 10px var(--warn); animation: pulse 0.9s ease-in-out infinite; }
+  .led.err  { background: var(--err);  box-shadow: 0 0 10px var(--err); }
+  @keyframes pulse { 50% { opacity: 0.4; } }
+  .output {
+    margin: 0;
+    background: #080604;
+    border: 1px solid var(--line-soft);
+    border-left: 3px solid var(--accent);
+    padding: 16px 18px;
+    font-family: var(--mono);
+    font-size: 0.8rem;
+    line-height: 1.75;
+    min-height: 200px;
+    max-height: 480px;
+    overflow: auto;
+    white-space: pre-wrap;
+    word-break: break-word;
+    color: #d6cdbb;
+  }
+  .footnote { margin: 4px 0 0; text-align: center; font-size: 0.72rem; letter-spacing: 0.14em; color: var(--faint); }
+  ::-webkit-scrollbar { width: 10px; height: 10px; }
+  ::-webkit-scrollbar-track { background: var(--inset); }
+  ::-webkit-scrollbar-thumb { background: #3d3527; border: 2px solid var(--inset); }
+  ::-webkit-scrollbar-thumb:hover { background: var(--accent); }
+</style>
+</head>
+<body>
+<main class="console">
+  <header class="masthead panel">
+    <div class="hazard"></div>
+    <div class="kicker">EVE ONLINE <b>//</b> INDUSTRIAL COMMAND</div>
+    <h1>Industry Calculator</h1>
+    <p class="tagline">Blueprint profitability &mdash; ME efficiency, EIV, system cost index &amp; live orderbooks</p>
+  </header>
+
+  <section class="panel">
+    <h2 class="panel-label">SDE Initialization</h2>
+    <div class="controls">
+      <div class="field" style="flex: 0 1 320px;">
+        <label>Auto-Load From Web</label>
+        <button id="webBtn" class="btn" type="button">Download Latest Fuzzwork SDE</button>
+      </div>
+      <div class="field">
+        <label for="dirInput">Or Load Local Fuzzwork Directory</label>
+        <input type="file" id="dirInput" webkitdirectory directory multiple>
+      </div>
+    </div>
+    <div class="status"><span class="led" id="sdeLed"></span><span id="sdeStatus">Load SDE data to enable calculations.</span></div>
+  </section>
+
+  <section class="panel">
+    <h2 class="panel-label">Blueprint Queue <span class="hint">tab, multi-space or comma separated &middot; name, ME, (3), runs</span></h2>
+    <textarea id="bpInput" class="data-area" spellcheck="false">Reinforced Bulkheads II Blueprint	2	4	10
+Tritanium Barrel Blueprint	-	-	-1	-	-</textarea>
+  </section>
+
+  <section class="panel">
+    <h2 class="panel-label">Parameters</h2>
+    <div class="controls">
+      <div class="field">
+        <label for="buyLoc">Buy At</label>
+        <select id="buyLoc">
+          <option value="jita" selected>Jita</option>
+          <option value="amarr">Amarr</option>
+          <option value="dodixie">Dodixie</option>
+          <option value="rens">Rens</option>
+          <option value="hek">Hek</option>
+          <option value="misaba">Misaba</option>
+        </select>
+      </div>
+      <div class="field">
+        <label for="sellLoc">Sell At</label>
+        <select id="sellLoc">
+          <option value="jita" selected>Jita</option>
+          <option value="amarr">Amarr</option>
+          <option value="dodixie">Dodixie</option>
+          <option value="rens">Rens</option>
+          <option value="hek">Hek</option>
+          <option value="misaba">Misaba</option>
+        </select>
+      </div>
+      <div class="field field-sm">
+        <label for="costIndexInput">Cost Index %</label>
+        <input type="number" id="costIndexInput" value="2.72" step="0.01" min="0">
+      </div>
+      <div class="field field-sm">
+        <label for="taxInput">Tax %</label>
+        <input type="number" id="taxInput" value="10" step="0.1" min="0">
+      </div>
+      <div class="field field-toggle">
+        <label class="toggle" for="dupeSwitch">
+          <input type="checkbox" id="dupeSwitch">
+          Remove Duplicates
+        </label>
+      </div>
+    </div>
+  </section>
+
+  <section class="panel">
+    <div class="progress"><i id="progressFill"></i></div>
+    <div class="status" style="margin-top: 12px;"><span class="led" id="runLed"></span><span id="statusMsg">System ready. Load SDE data above to proceed.</span></div>
+    <div class="actions" style="margin-top: 16px;">
+      <button id="runBtn" class="btn btn-primary" type="button" disabled>Run Calculation</button>
+      <button id="clearBtn" class="btn" type="button">Clear Outputs</button>
+    </div>
+  </section>
+
+  <section class="panel">
+    <h2 class="panel-label">Top 30 &middot; ROI Rankings</h2>
+    <div class="ranks">
+      <table>
+        <thead>
+          <tr><th>#</th><th>Blueprint</th><th>ROI</th><th>Margin (ISK)</th><th>Investment (ISK)</th></tr>
+        </thead>
+        <tbody id="top30Body">
+          <tr><td colspan="5" class="empty">Run a calculation to populate rankings.</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="panel">
+    <h2 class="panel-label">Calculation Report</h2>
+    <pre id="output" class="output">Paste blueprint data and run the calculation.</pre>
+  </section>
+
+  <p class="footnote">DATA: FUZZWORK SDE + ESI TRANQUILITY &middot; PRICES IN ISK</p>
+  <p class="footnote">VERSION 1.0 &middot; 2026-10-12 &middot; VULNUS MORTALIS</p>
+</main>
+<script>
+"use strict";
+const FUZZWORK = 'https://www.fuzzwork.co.uk/dump/latest/csv';
+const SDE_FILES = {
+  types:     `${FUZZWORK}/invTypes.csv`,
+  products:  `${FUZZWORK}/industryActivityProducts.csv`,
+  materials: `${FUZZWORK}/industryActivityMaterials.csv`,
+};
+const ESI_ORDERS = 'https://esi.evetech.net/latest/markets';
+const ESI_PRICES = 'https://esi.evetech.net/latest/markets/prices/?datasource=tranquility';
+const PROXY = url => `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`;
+const FALLBACK = { sell: 2_500_000, buy: 2_000_000 };
+
+const LOCATIONS = Object.freeze({
+  jita:    { label: 'Jita',    system: 30000142, region: 10000002 },
+  amarr:   { label: 'Amarr',   system: 30002187, region: 10000043 },
+  dodixie: { label: 'Dodixie', system: 30002659, region: 10000032 },
+  rens:    { label: 'Rens',    system: 30002510, region: 10000030 },
+  hek:     { label: 'Hek',     system: 30002053, region: 10000042 },
+  misaba:  { label: 'Misaba',  system: 30003563, region: 10000043 },
+});
+
+const idToName = new Map();
+const nameToId = new Map();
+const bpToProducts = new Map(); // bpId -> [[qtyPerRun, productId], ...]
+const bpToMaterials = new Map(); // bpId -> [[qtyPerRun, materialId], ...]
+const adjustedPrices = new Map(); // typeId -> ESI adjusted price (EIV basis)
+let sdeReady = false;
+
+const $ = id => document.getElementById(id);
+const escapeHtml = s => s.replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const nextFrame = () => new Promise(r => setTimeout(r, 40));
+const typeIdFor = name => nameToId.get(name) ?? nameToId.get(name.toLowerCase());
+const RULE = '═'.repeat(78);
+
+function parseCSV(text) {
+  const rows = [];
+  let row = [];
+  let cell = '';
+  let quoted = false;
+  for (let i = 0; i < text.length; i++) {
+    const ch = text[i];
+    if (quoted) {
+      if (ch === '"') {
+        if (text[i + 1] === '"') { cell += '"'; i++; }
+        else quoted = false;
+      } else {
+        cell += ch;
+      }
+    } else if (ch === '"') {
+      quoted = true;
+    } else if (ch === ',') {
+      row.push(cell.trim());
+      cell = '';
+    } else if (ch === '\n') {
+      row.push(cell.trim());
+      if (row.some(v => v !== '')) rows.push(row);
+      row = [];
+      cell = '';
+    } else if (ch !== '\r') {
+      cell += ch;
+    }
+  }
+  row.push(cell.trim());
+  if (row.some(v => v !== '')) rows.push(row);
+  return rows;
+}
+
+async function fetchText(url) {
+  try {
+    const res = await fetch(url);
+    if (res.ok) return res.text();
+  } catch { /* direct fetch blocked (CORS/network) — fall back to proxy */ }
+  const res = await fetch(PROXY(url));
+  if (!res.ok) throw new Error(`download failed (HTTP ${res.status})`);
+  return res.text();
+}
+
+function applyInvTypes(text) {
+  const rows = parseCSV(text);
+  if (rows[0]?.[0] === 'typeID') rows.shift();
+  for (const r of rows) {
+    const tid = Number(r[0]);
+    const name = r[2];
+    if (Number.isInteger(tid) && name) {
+      idToName.set(tid, name);
+      nameToId.set(name, tid);
+      nameToId.set(name.toLowerCase(), tid);
+    }
+  }
+}
+
+function applyActivity(text, target) {
+  const rows = parseCSV(text);
+  if (rows[0]?.[0] === 'typeID') rows.shift();
+  for (const r of rows) {
+    if (Number(r[1]) !== 1) continue; // main recipe only
+    const bpId = Number(r[0]);
+    const refId = Number(r[2]);
+    const qty = Number(r[3]);
+    if (!Number.isInteger(bpId) || !Number.isInteger(refId) || !Number.isFinite(qty)) continue;
+    if (!target.has(bpId)) target.set(bpId, []);
+    target.get(bpId).push([qty, refId]);
+  }
+}
+
+async function loadAdjustedPrices() {
+  try {
+    const res = await fetch(ESI_PRICES);
+    if (res.ok) {
+      for (const { type_id, adjusted_price } of await res.json()) {
+        if (adjusted_price != null) adjustedPrices.set(type_id, adjusted_price);
+      }
+    }
+  } catch { /* EIV will fall back to live market prices */ }
+}
+
+async function marketPrice(typeId, loc, kind) {
+  try {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 1200);
+    const res = await fetch(`${ESI_ORDERS}/${loc.region}/orders/?datasource=tranquility&order_type=${kind}&type_id=${typeId}`, { signal: controller.signal });
+    clearTimeout(timer);
+    if (res.ok) {
+      const inSystem = (await res.json()).filter(o => o.system_id === loc.system);
+      if (inSystem.length) {
+        return inSystem.reduce(
+          (best, o) => (kind === 'sell' ? Math.min(best, o.price) : Math.max(best, o.price)),
+          kind === 'sell' ? Infinity : -Infinity
+        );
+      }
+    }
+  } catch { /* timeout or ESI hiccup — fall back below */ }
+  return adjustedPrices.get(typeId) ?? FALLBACK[kind];
+}
+
+function parseBlueprintLine(line) {
+  const cells = (line.includes('\t') ? line.split('\t')
+    : /\s{2,}/.test(line) ? line.split(/\s{2,}/)
+    : line.includes(',') ? line.split(',')
+    : [line]).map(p => p.trim());
+
+  const name = cells[0] ?? '';
+  let me = cells[1] != null && cells[1] !== '-' && cells[1] !== '' ? parseFloat(cells[1]) : 2;
+  let runs = cells[3] != null && cells[3] !== '-' && cells[3] !== '' ? parseInt(cells[3], 10) : 10;
+  if (!Number.isFinite(me) || me <= 0) me = 2;
+  if (!Number.isFinite(runs) || runs < 0) runs = 10; // exports use -1 for indeterminate runs
+  return { name, me, runs };
+}
+
+function setProgress(p) { $('progressFill').style.width = `${p}%`; }
+
+function setStatus(msg, state = '') {
+  $('statusMsg').textContent = msg;
+  $('statusLed' && $('sdeLed') || $('runLed'));
+  $('runLed').className = `led ${state}`;
+}
+
+function setSdeStatus(msg, state = '') {
+  $('sdeStatus').textContent = msg;
+  $('sdeLed').className = `led ${state}`;
+}
+
+function markSdeReady() {
+  sdeReady = true;
+  $('runBtn').disabled = false;
+  setSdeStatus('SDE online — ready to calculate.', 'on');
+}
+
+function emptyRow(msg) {
+  return `<tr><td colspan="5" class="empty">${msg}</td></tr>`;
+}
+
+function setTableBusy(msg, error = false) {
+  $('top30Body').innerHTML = emptyRow(msg);
+  $('top30Body').firstElementChild.classList.toggle('err', error);
+}
+
+function renderTop30(results) {
+  const top = [...results].sort((a, b) => b.roi - a.roi).slice(0, 30);
+  if (!top.length) { setTableBusy('No valid blueprints calculated.'); return; }
+  $('top30Body').innerHTML = top.map((r, i) => `
+    <tr>
+      <td>${String(i + 1).padStart(2, '0')}</td>
+      <td>${escapeHtml(r.name)}</td>
+      <td class="${r.roi >= 0 ? 'pos' : 'neg'}">${r.roi.toFixed(2)}%</td>
+      <td class="${r.margin >= 0 ? 'pos' : 'neg'}">${r.margin >= 0 ? '+' : ''}${Math.round(r.margin).toLocaleString('en-US')}</td>
+      <td>${Math.round(r.investment).toLocaleString('en-US')}</td>
+    </tr>`).join('');
+}
+
+async function copyText(text) {
+  try {
+    await navigator.clipboard.writeText(text);
+    return true;
+  } catch { return false; }
+}
+
+$('webBtn').addEventListener('click', async () => {
+  const btn = $('webBtn');
+  btn.disabled = true;
+  const steps = [
+    ['Downloading invTypes.csv (1/3)...', SDE_FILES.types, text => applyInvTypes(text), 15],
+    ['Downloading industryActivityProducts.csv (2/3)...', SDE_FILES.products, text => applyActivity(text, bpToProducts), 50],
+    ['Downloading industryActivityMaterials.csv (3/3)...', SDE_FILES.materials, text => applyActivity(text, bpToMaterials), 85],
+  ];
+  try {
+    for (const [label, url, apply, progress] of steps) {
+      setSdeStatus(label, 'busy');
+      setProgress(5);
+      const text = await fetchText(url);
+      setProgress(progress);
+      await nextFrame();
+      apply(text);
+    }
+    setProgress(100);
+    markSdeReady();
+  } catch (err) {
+    setProgress(0);
+    setSdeStatus(`Web download failed: ${err.message}`, 'err');
+  } finally {
+    btn.disabled = false;
+  }
+});
+
+$('dirInput').addEventListener('change', async e => {
+  const files = [...e.target.files];
+  if (!files.length) return;
+  const find = name => files.find(f => f.name === name);
+  const types = find('invTypes.csv');
+  const products = find('industryActivityProducts.csv');
+  const materials = find('industryActivityMaterials.csv');
+  if (!types && !products && !materials) {
+    setSdeStatus('No Fuzzwork CSVs found in that directory (expected invTypes.csv, industryActivityProducts.csv, industryActivityMaterials.csv).', 'err');
+    return;
+  }
+
+  const loaded = [];
+  if (types) {
+    setSdeStatus('Parsing invTypes.csv...', 'busy');
+    applyInvTypes(await types.text());
+    loaded.push('invTypes');
+  }
+  if (products) {
+    setSdeStatus('Parsing industryActivityProducts.csv...', 'busy');
+    applyActivity(await products.text(), bpToProducts);
+    loaded.push('products');
+  }
+  if (materials) {
+    setSdeStatus('Parsing industryActivityMaterials.csv...', 'busy');
+    applyActivity(await materials.text(), bpToMaterials);
+    loaded.push('materials');
+  }
+  markSdeReady();
+  setSdeStatus(`SDE loaded from directory: ${loaded.join(' + ')}.`, 'on');
+  e.target.value = ''; // allow re-selecting the same folder
+});
+
+$('runBtn').addEventListener('click', async () => {
+  const raw = $('bpInput').value.trim();
+  if (!raw) { setStatus('Paste blueprint data first.', 'err'); return; }
+
+  const buyLoc = LOCATIONS[$('buyLoc').value];
+  const sellLoc = LOCATIONS[$('sellLoc').value];
+  const ciRaw = parseFloat($('costIndexInput').value);
+  const txRaw = parseFloat($('taxInput').value);
+  const costIndex = (Number.isFinite(ciRaw) ? ciRaw : 2.72) / 100;
+  const tax = (Number.isFinite(txRaw) ? txRaw : 10) / 100;
+  const removeDupes = $('dupeSwitch').checked;
+
+  const seen = new Set();
+  const bpData = [];
+  for (const line of raw.split('\n')) {
+    const parsed = parseBlueprintLine(line.trim());
+    if (!parsed.name) continue;
+    const key = parsed.name.toLowerCase();
+    if (removeDupes && seen.has(key)) continue;
+    seen.add(key);
+    bpData.push(parsed);
+  }
+  if (!bpData.length) { setStatus('No blueprint lines parsed.', 'err'); return; }
+
+  const btn = $('runBtn');
+  btn.disabled = true;
+  setProgress(5);
+  $('output').textContent = 'Initializing...';
+  setTableBusy('Loading metrics...');
+
+  try {
+    setStatus('Fetching adjusted prices (EIV)...', 'busy');
+    await loadAdjustedPrices();
+    setProgress(12);
+
+    const products = new Set();
+    const materials = new Set();
+    for (const bp of bpData) {
+      const bpId = typeIdFor(bp.name);
+      if (!bpId) continue;
+      for (const [, refId] of bpToProducts.get(bpId) ?? []) products.add(refId);
+      for (const [, refId] of bpToMaterials.get(bpId) ?? []) materials.add(refId);
+    }
+
+    setStatus(`Pricing ${products.size} products at ${sellLoc.label}...`, 'busy');
+    const productPrices = new Map();
+    await Promise.all([...products].map(async pid => productPrices.set(pid, await marketPrice(pid, sellLoc, 'sell'))));
+    setProgress(40);
+
+    setStatus(`Pricing ${materials.size} materials at ${buyLoc.label}...`, 'busy');
+    const materialPrices = new Map();
+    await Promise.all([...materials].map(async mid => materialPrices.set(mid, await marketPrice(mid, buyLoc, 'sell'))));
+    setProgress(65);
+
+    const results = [];
+    const shopping = new Map();
+    let totalInvest = 0;
+    let totalRevenue = 0;
+    const report = [
+      `CALCULATION REPORT  ·  BUY: ${buyLoc.label.toUpperCase()}  →  SELL: ${sellLoc.label.toUpperCase()}`,
+      `BLUEPRINTS: ${bpData.length}${removeDupes ? ' (duplicates filtered)' : ''}   ·   COST INDEX: ${(costIndex * 100).toFixed(2)}%   ·   TAX: ${(tax * 100).toFixed(1)}%`,
+      RULE,
+    ];
+
+    for (const bp of bpData) {
+      const bpId = typeIdFor(bp.name);
+      if (!bpId) {
+        report.push(`! "${bp.name}" — not found in SDE.`, RULE);
+        continue;
+      }
+
+      const meReduction = Math.min(Math.max(bp.me, 0), 100) / 100;
+      let revenue = 0;
+      let matCost = 0;
+      let eiv = 0;
+      const log = [`${bp.name}  ·  type ${bpId}  ·  ME ${bp.me}%  ·  RUNS ${bp.runs}`];
+
+      for (const [perRun, pid] of bpToProducts.get(bpId) ?? []) {
+        const qty = perRun * bp.runs;
+        const price = productPrices.get(pid) ?? 0;
+        revenue += qty * price;
+        log.push(`  OUT  ${qty.toLocaleString('en-US')}× ${idToName.get(pid) ?? `?${pid}`} @ ${price.toLocaleString('en-US')} = ${(qty * price).toLocaleString('en-US')}`);
+      }
+      for (const [perRun, mid] of bpToMaterials.get(bpId) ?? []) {
+        const baseQty = perRun * bp.runs;
+        const qty = Math.ceil(baseQty * (1 - meReduction));
+        const price = materialPrices.get(mid) ?? 0;
+        matCost += qty * price;
+        eiv += baseQty * (adjustedPrices.get(mid) ?? price);
+        shopping.set(mid, (shopping.get(mid) ?? 0) + qty);
+        log.push(`  MAT  ${qty.toLocaleString('en-US')}× ${idToName.get(mid) ?? `?${mid}`} @ ${price.toLocaleString('en-US')} = ${(qty * price).toLocaleString('en-US')}`);
+      }
+
+      const jobCost = eiv * (costIndex + tax);
+      const investment = matCost + jobCost;
+      const margin = revenue - investment;
+      const roi = investment > 0 ? (margin / investment) * 100 : 0;
+
+      log.push(
+        `  INVESTMENT  ${investment.toLocaleString('en-US')}   (materials ${matCost.toLocaleString('en-US')} + job cost ${jobCost.toLocaleString('en-US')})`,
+        `  EIV         ${eiv.toLocaleString('en-US')}`,
+        `  REVENUE     ${revenue.toLocaleString('en-US')}`,
+        `  MARGIN      ${margin >= 0 ? '+' : ''}${margin.toLocaleString('en-US')}`,
+        `  ROI         ${roi.toFixed(2)}%`,
+        RULE,
+      );
+
+      totalInvest += investment;
+      totalRevenue += revenue;
+      results.push({ name: bp.name, investment, margin, roi });
+      report.push(...log);
+    }
+
+    const overallMargin = totalRevenue - totalInvest;
+    report.push(
+      'OVERALL SUMMARY',
+      RULE,
+      `  INVESTMENT  ${totalInvest.toLocaleString('en-US')}`,
+      `  REVENUE     ${totalRevenue.toLocaleString('en-US')}`,
+      `  MARGIN      ${overallMargin >= 0 ? '+' : ''}${overallMargin.toLocaleString('en-US')}`,
+      `  ROI         ${totalInvest > 0 ? ((overallMargin / totalInvest) * 100).toFixed(2) : '0.00'}%`,
+      '',
+      `SHOPPING LIST  ·  ${shopping.size} unique materials`,
+    );
+
+    $('output').textContent = report.join('\n');
+    setProgress(100);
+    setStatus('Calculation complete.', 'on');
+    renderTop30(results);
+
+    const list = [...shopping].map(([mid, qty]) => `${idToName.get(mid) ?? `?${mid}`}\t${qty}`).join('\n');
+    copyText(list).then(ok => {
+      if (ok) setStatus('Calculation complete — shopping list copied to clipboard.', 'on');
+    });
+  } catch (err) {
+    setProgress(0);
+    $('output').textContent = `Calculation failed: ${err.message}`;
+    setStatus('Calculation halted.', 'err');
+    setTableBusy('Calculation error', true);
+  } finally {
+    btn.disabled = false;
+  }
+});
+
+$('clearBtn').addEventListener('click', () => {
+  $('output').textContent = '';
+  setTableBusy('Run a calculation to populate rankings.');
+  setProgress(0);
+  setStatus('Outputs cleared.');
+});
+</script>
+</body>
+</html>
